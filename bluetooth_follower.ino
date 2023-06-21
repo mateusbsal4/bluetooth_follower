@@ -16,17 +16,22 @@ int svl=0;                //declara variável de leitura do sensor de linha esqu
 int max_speedL = 200;      //máximo valor analógico de velocidade do motor esquerdo
 int max_speedR = 150;      //máximo valor analógico de velocidade do motor direito
 int min_speed = 0;        //mínimo valor analógico de velocidade
-int speed = 0;              //declara variável de controle da velocidade (escala de 0 a 255) dos motores CC
-int speedpercent;           //declara variável auxiliar 
+int motorR_direction = 1;   //direção do motor direito   
+int motorL_direction = 1;   //direção do motor esquerdo
+int Rmotor_speed = 0;     //variavel que guarda a velocidade do motor direito   
+int Lmotor_speed = 0;     //variavel que guarda a velocidade do motor esquerdo
+
 int servo_pos = 0;        //declara variável d e controle da posição angular dos servomotores
-char data;                 //caracter para leitura de dados via comunicação serial (no tinkercad, no carrinho em si será via bluetooth)
 Servo servo1;               //instancia classe Servo
 Servo servo2;               //dois servomotores - 1 para trava esquerda outro para trava direita
 
-int motorR_direction = 1;
-int motorL_direction = 1;
-int Rmotor_speed = 0;
-int Lmotor_speed = 0;
+
+
+char data;                 //caracter para leitura de dados via bluetooth
+int bluetooth_setup = 1;
+
+
+
 
 void setup(){
   Serial.begin(9600);         //comunicação serial é iniciada com baud rate 9600
@@ -34,24 +39,16 @@ void setup(){
 
   pinMode(Rdirpin,OUTPUT); 
   pinMode(Rspeedpin,OUTPUT);      
-  pinMode(Lspeedpin, OUTPUT);   //seta pinos associados aos motores CC e servos como saída  
+  pinMode(Lspeedpin, OUTPUT);   //seta pinos associados aos motores CC como saída  
   pinMode(Ldirpin, OUTPUT);
-  pinMode(Servo1pin, OUTPUT);
-  pinMode(Servo2pin, OUTPUT);
 
   pinMode(sensorleftPin, INPUT);  //seta pinos dos sensores como entrada
   pinMode(sensorrightPin, INPUT);
 
-  servo1.attach(Servo1pin);       //associa objetos dos servomotores aos respectivos pinos
-  servo2.attach(Servo2pin);
-  servo1.write(90);   //inicia os servos na posição 90º
-  servo2.write(90);
 
 
 
 }
-
-
 
 void rotate_lever(int desired_pos){             //função de controle do servomotor
   if(desired_pos== 180){                                                   
@@ -65,7 +62,7 @@ void rotate_lever(int desired_pos){             //função de controle do servom
 } 
 
 void bluetooth_control(){
-    data = bt.read();                                 //lê caracteres enviados via serial (para testes no tinkercad, no carrinho físico será utilizado SpftwareSerial e pinos RX, TX para comunicação Bluetooth)
+    data = bt.read();                                 //lê caracteres enviados via bluetooth
     if (data == 'a'){                                     //botão superior do joystick esquerdo é pressionado 
       motorR_direction = 1;
       motorL_direction = 0;                             //acelera com a velocidade setada acima
@@ -90,25 +87,21 @@ void bluetooth_control(){
       Rmotor_speed = 255;                                //vira para esquerda
       Lmotor_speed = 255;
     }
-    else if(data == 'A'){                                   //botão 'x' do joystick direito é pressionado
+    else if(data == 'A'){                                   //botão de cima do joystick direito é pressionado
         rotate_lever(180);                                 //desce ambas as travas para a horizontal
     }
-    else if(data =='C'){                                   //botão triângulo do joytick direito é pressionado
+    else if(data =='C'){                                   //botão de baixo do joytick direito é pressionado
         rotate_lever(0);                                  //volta ambas as travas para a vertical
     }
-    else{
-      Rmotor_speed = min_speed;                                //velocidade zero  
+    else{                                                 //se ultimo caracter recebido for qualquer outro diferente dos acima
+      Rmotor_speed = min_speed;                                //velocidade zero  - para o carrinho
       Lmotor_speed = min_speed;        
     }
-  speedpercent = (int)(100*speed)/255;                  //velocidade em percentagem
 }
 
 void followLine(){
   svr=digitalRead(sensorrightPin);    //leitura do sensor de linha direito 
   svl=digitalRead(sensorleftPin);     //leitura do sensor de linh esquerdo
-  Serial.print(svr);
-  Serial.print(svl);
-  //Serial.print("Autônomo.... ");
   if(svl==LOW && svr==LOW)    //ambos sensores não detectam linha
   {
     motorR_direction = 1;
@@ -143,30 +136,30 @@ void followLine(){
 
 void loop() {
   static unsigned long startTime = millis();
-  //if (millis() - startTime < 30000) {    //primeiros 30 segundos
-    //Serial.print("Autônomo.... ");
-    //followLine();                        //funcionamento autônomo - seguidor de linha
-    //digitalWrite(Rdirpin, motorR_direction);      
-    //digitalWrite(Ldirpin, motorL_direction);
-    //analogWrite(Rspeedpin, Rmotor_speed);
-    //analogWrite(Lspeedpin, Lmotor_speed);
-  //} 
-  //else{ 
-  if (bt.available()) {                   
-
-    Serial.print("bluetooth.... ");
-    bluetooth_control();                //controle por bluetooth - seta direção de cada motor e velocidade
-    digitalWrite(Rdirpin, motorR_direction);      
-    digitalWrite(Ldirpin, motorL_direction);
-    analogWrite(Rspeedpin, Rmotor_speed);
-    analogWrite(Lspeedpin, Lmotor_speed);
-    //delay(1000);
-    Serial.print("velocidade ");        
-    Serial.println(speed);
-    Serial.print("velocidade %: ");           //imprime no monitor serial(utilizado para testes apenas)
-    Serial.println(speedpercent);
-    Serial.print("data: ");
-    Serial.println(data);
+  if (millis() - startTime < 30000) {    //primeiros 30 segundos
+    Serial.print("Autônomo.... ");
+    followLine();                        //funcionamento autônomo - seguidor de linha
+  } 
+  else{ 
+    if (bt.available()) {                   
+      if(bluetooth_setup){
+        analogWrite(Rspeedpin, min_speed);
+        analogWrite(Lspeedpin, min_speed);  //para o carrinho na transição entre autonomo e bluetooth
+        pinMode(Servo1pin, OUTPUT);
+        pinMode(Servo2pin, OUTPUT);
+        servo1.attach(Servo1pin);       //associa objetos dos servomotores aos respectivos pinos
+        servo2.attach(Servo2pin);
+        servo1.write(90);   //inicia os servos na posição 90º
+        servo2.write(90);
+        bluetooth_setup = 0;    //entra nesse if uma vez só - só para o setup do bluetooth
+      }
+      Serial.print("bluetooth.... ");
+      bluetooth_control();                //controle por bluetooth - seta direção de cada motor e velocidade
+    }
   }
-  //}
+  digitalWrite(Rdirpin, motorR_direction);      
+  digitalWrite(Ldirpin, motorL_direction);
+  analogWrite(Rspeedpin, Rmotor_speed);   //seta as direções e velocidades (determinadas por followLine ou bluetooth_control)
+  analogWrite(Lspeedpin, Lmotor_speed);   //dos motores
+  //delay(50);     //se necessario adicionar delay (é em ms)
 }
