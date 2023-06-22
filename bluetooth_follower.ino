@@ -1,5 +1,6 @@
 #include <Servo.h>        //biblioteca para controle dos servos
 #include <SoftwareSerial.h>
+#include <SoftPWM.h>
 SoftwareSerial bt(11, 12);
 #define Ldirpin 10     //pino digital para controle da direção do motor direito  - MOTOR 1
 #define Lspeedpin 9   //pino analógico para controle da velocidade do motor direito -  MOTOR 1
@@ -13,7 +14,7 @@ SoftwareSerial bt(11, 12);
 
 int svr=0;                //declara variável de leitura do sensor de linha direito
 int svl=0;                //declara variável de leitura do sensor de linha esquerdo
-int max_speedL = 200;      //máximo valor analógico de velocidade do motor esquerdo
+int max_speedL = 150;      //máximo valor analógico de velocidade do motor esquerdo
 int max_speedR = 150;      //máximo valor analógico de velocidade do motor direito
 int min_speed = 0;        //mínimo valor analógico de velocidade
 int motorR_direction = 1;   //direção do motor direito   
@@ -44,6 +45,8 @@ void setup(){
 
   pinMode(sensorleftPin, INPUT);  //seta pinos dos sensores como entrada
   pinMode(sensorrightPin, INPUT);
+  SoftPWMBegin();
+  SoftPWMSet(7, 0);
 
 
 
@@ -51,7 +54,7 @@ void setup(){
 }
 
 void rotate_lever(int desired_pos){             //função de controle do servomotor
-  if(desired_pos== 180){                                                   
+  if(desired_pos== 90){                                                   
       servo_pos = (servo_pos<desired_pos?servo_pos+10:desired_pos);       //incrementa ângulo caso seja menor que 180, caso contrário mantém em 180
   }
   else if(desired_pos== 0){                                                 
@@ -88,10 +91,14 @@ void bluetooth_control(){
       Lmotor_speed = 255;
     }
     else if(data == 'A'){                                   //botão de cima do joystick direito é pressionado
-        rotate_lever(180);                                 //desce ambas as travas para a horizontal
+        rotate_lever(90);                                 //desce ambas as travas para a horizontal
     }
     else if(data =='C'){                                   //botão de baixo do joytick direito é pressionado
         rotate_lever(0);                                  //volta ambas as travas para a vertical
+    }
+    else if(data =='B'){                                   //botão de baixo do joytick direito é pressionado
+      Rmotor_speed = min_speed;                                //velocidade zero  - para o carrinho
+      Lmotor_speed = min_speed; 
     }
     else{                                                 //se ultimo caracter recebido for qualquer outro diferente dos acima
       Rmotor_speed = min_speed;                                //velocidade zero  - para o carrinho
@@ -128,8 +135,7 @@ void followLine(){
   
   else if(svl==HIGH && svr==HIGH)      //ambos sensores detecta a linha
   {
-    Rmotor_speed = min_speed;
-    Lmotor_speed = min_speed;
+
   }
 }
 
@@ -141,10 +147,11 @@ void loop() {
     followLine();                        //funcionamento autônomo - seguidor de linha
   } 
   else{ 
-    if (bt.available()) {                   
-      if(bluetooth_setup){
-        analogWrite(Rspeedpin, min_speed);
-        analogWrite(Lspeedpin, min_speed);  //para o carrinho na transição entre autonomo e bluetooth
+     if(bluetooth_setup){
+        Rmotor_speed = 0;
+        Lmotor_speed = 0;     //para o carrinho na transição entre autonomo e bluetooth
+        //SoftPWMSet(7, 0);  
+        //SoftPWMSet(9, 0);  
         pinMode(Servo1pin, OUTPUT);
         pinMode(Servo2pin, OUTPUT);
         servo1.attach(Servo1pin);       //associa objetos dos servomotores aos respectivos pinos
@@ -153,13 +160,14 @@ void loop() {
         servo2.write(90);
         bluetooth_setup = 0;    //entra nesse if uma vez só - só para o setup do bluetooth
       }
+    else if (bt.available()) {                   
       Serial.print("bluetooth.... ");
       bluetooth_control();                //controle por bluetooth - seta direção de cada motor e velocidade
     }
   }
   digitalWrite(Rdirpin, motorR_direction);      
   digitalWrite(Ldirpin, motorL_direction);
-  analogWrite(Rspeedpin, Rmotor_speed);   //seta as direções e velocidades (determinadas por followLine ou bluetooth_control)
-  analogWrite(Lspeedpin, Lmotor_speed);   //dos motores
-  //delay(50);     //se necessario adicionar delay (é em ms)
+  SoftPWMSet(7, Rmotor_speed);   //seta as direções e velocidades (determinadas por followLine ou bluetooth_control)
+  SoftPWMSet(9, Lmotor_speed);   //dos motores
+  delay(50);     //se necessario adicionar delay (é em ms)
 }
