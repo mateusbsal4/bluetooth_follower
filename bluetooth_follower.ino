@@ -142,7 +142,7 @@ void followLine(){
 
 void loop() {
   static unsigned long startTime = millis();
-  if (millis() - startTime < 30000) {    //primeiros 30 segundos
+  if (millis() - startTime < 16000) {    //primeiros 16 segundos
     Serial.print("Autônomo.... ");
     followLine();                        //funcionamento autônomo - seguidor de linha
   } 
