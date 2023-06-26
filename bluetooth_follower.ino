@@ -45,8 +45,7 @@ void setup(){
 
   pinMode(sensorleftPin, INPUT);  //seta pinos dos sensores como entrada
   pinMode(sensorrightPin, INPUT);
-  SoftPWMBegin();
-  SoftPWMSet(7, 0);
+  SoftPWMBegin();              //inicializaçoes PWM
 
 
 
@@ -132,11 +131,6 @@ void followLine(){
     Rmotor_speed = max_speedR;          //rotaçaão para direta
     Lmotor_speed = max_speedL;
   }
-  
-  else if(svl==HIGH && svr==HIGH)      //ambos sensores detecta a linha
-  {
-
-  }
 }
 
 
@@ -150,8 +144,6 @@ void loop() {
      if(bluetooth_setup){
         Rmotor_speed = 0;
         Lmotor_speed = 0;     //para o carrinho na transição entre autonomo e bluetooth
-        //SoftPWMSet(7, 0);  
-        //SoftPWMSet(9, 0);  
         pinMode(Servo1pin, OUTPUT);
         pinMode(Servo2pin, OUTPUT);
         servo1.attach(Servo1pin);       //associa objetos dos servomotores aos respectivos pinos
@@ -167,7 +159,7 @@ void loop() {
   }
   digitalWrite(Rdirpin, motorR_direction);      
   digitalWrite(Ldirpin, motorL_direction);
-  SoftPWMSet(7, Rmotor_speed);   //seta as direções e velocidades (determinadas por followLine ou bluetooth_control)
-  SoftPWMSet(9, Lmotor_speed);   //dos motores
+  SoftPWMSet(Rspeedpin, Rmotor_speed);   //seta as direções e velocidades (determinadas por followLine ou bluetooth_control)
+  SoftPWMSet(Lspeedpin, Lmotor_speed);   //dos motores
   delay(50);     //se necessario adicionar delay (é em ms)
 }
